@@ -1,7 +1,7 @@
 <?php
-// repository.php - Dédié à la persistance et l'accès aux données en mémoire
+namespace EWallet\Repository;
 
-function trouverIndexWallet(array &$wallets, string $telephone): int {
+function trouverWallet(string $telephone, array $wallets): int {
     $found = array_filter($wallets, function(array $w) use ($telephone): bool {
         return $w["telephone"] === $telephone;
     });
@@ -12,26 +12,29 @@ function trouverIndexWallet(array &$wallets, string $telephone): int {
     return $keys[0];
 }
 
-function ajouterWallet(array &$wallets, array $wallet): void {
-    $wallets[] = $wallet;
+function telephoneEstUnique(string $telephone, array $wallets): int {
+    $index = trouverWallet($telephone, $wallets);
+    return $index === -1 ? 10 : 11;
 }
 
-function mettreAjourSolde(array &$wallets, int $index, int $nouveauSolde): void {
-    $wallets[$index]['solde'] = $nouveauSolde;
-}
-
-function ajouterTransaction(array &$transactions, string $type, string $telephone, int $montant, int $frais): void {
-    $transactions[] = [
-        'type' => $type,
-        'telephone' => $telephone,
-        'montant' => $montant,
-        'frais' => $frais,
-        'date' => date('Y-m-d H:i:s')
-    ];
-}
-
-function obtenirTransactionsParTelephone(array &$transactions, string $telephone): array {
-    return array_filter($transactions, function(array $t) use ($telephone): bool {
-        return $t['telephone'] === $telephone;
+function codeEstUnique(string $code, array $wallets): int {
+    $found = array_filter($wallets, function(array $w) use ($code): bool {
+        return $w["code"] === $code;
     });
+    return count($found) === 0 ? 10 : 11;
+}
+
+function ajouterWallet(array &$wallets, array $nouveauWallet): int {
+    $wallets[] = $nouveauWallet;
+    return 10;
+}
+
+function mettreAJourSolde(array &$wallets, int $index, int $nouveauSolde): int {
+    $wallets[$index]["solde"] = $nouveauSolde;
+    return 10;
+}
+
+function ajouterTransaction(array &$transactions, array $nouvelleTrans): int {
+    $transactions[] = $nouvelleTrans;
+    return 10;
 }

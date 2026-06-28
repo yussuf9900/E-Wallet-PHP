@@ -1,181 +1,205 @@
 <?php
-// controller.php - Intermédiaire (routeur de logique)
+namespace EWallet\Controller;
+
+use EWallet\Validator;
+use EWallet\Repository;
+use EWallet\Service;
 
 function afficherText(string $message): void {
     echo $message;
 }
 
-function lireSaisie(string $invite): string {
-    afficherText($invite);
-    return readline();
+function lireSaisie(string $invite = ""): string {
+    if ($invite !== "") {
+        afficherText($invite);
+    }
+    return trim(fgets(STDIN));
 }
 
-function afficherMenu(): void {
-    afficherText("\n** Menu Distributeur **\n");
-    afficherText("1 - Créer Wallet\n");
-    afficherText("2 - Faire Dépôt\n");
-    afficherText("3 - Faire Retrait\n");
-    afficherText("4 - Lister les Transactions\n");
-    afficherText("0 - Quitter\n");
+function formaterMontant(int $montant): string {
+    return number_format($montant, 0, ",", " ") . " CFA";
 }
 
-function controllerCreerWallet(array &$wallets): void {
-    $telephone = lireSaisie("Entrez le numéro de téléphone (Sénégal, 9 chiffres) : ");
-    if (validerTelephone($telephone) === 11) {
-        afficherText("Erreur : Numéro de téléphone invalide.\n");
-        return;
+function afficherMenu(): int {
+    $menu = "\n" .
+            "╔══════════════════════════════════════╗\n" .
+            "║        MENU DISTRIBUTEUR             ║\n" .
+            "╠══════════════════════════════════════╣\n" .
+            "║  1. Créer Wallet                     ║\n" .
+            "║  2. Faire Dépôt                      ║\n" .
+            "║  3. Faire Retrait                    ║\n" .
+            "║  4. Lister les Transactions          ║\n" .
+            "║  0. Quitter                          ║\n" .
+            "╚══════════════════════════════════════╝\n" .
+            "  Votre choix : ";
+    afficherText($menu);
+    $choix = trim(fgets(STDIN));
+    if (Validator\estChiffre($choix) === 10) {
+        return (int) $choix;
     }
-    if (estTelephoneUnique($wallets, $telephone) === 11) {
-        afficherText("Erreur : Ce numéro de téléphone existe déjà.\n");
-        return;
-    }
-
-    $nom = lireSaisie("Entrez le nom du client : ");
-    if (validerNom($nom) === 11) {
-        afficherText("Erreur : Le nom est obligatoire.\n");
-        return;
-    }
-
-    $soldeString = lireSaisie("Entrez le solde initial (>= 0) : ");
-    if (validerMontant($soldeString) === 11) {
-        afficherText("Erreur : Solde initial invalide (doit être un entier positif ou nul).\n");
-        return;
-    }
-    $solde = (int)$soldeString;
-
-    $code = lireSaisie("Entrez le code secret (4 chiffres) : ");
-    if (validerCodeSecret($code) === 11) {
-        afficherText("Erreur : Le code secret doit comporter exactement 4 chiffres.\n");
-        return;
-    }
-    if (estCodeUnique($wallets, $code) === 11) {
-        afficherText("Erreur : Ce code secret existe déjà.\n");
-        return;
-    }
-
-    $resultat = tenterCreerWallet($wallets, $telephone, $nom, $solde, $code);
-    if ($resultat === 10) {
-        afficherText("Succès : Le wallet a été créé avec succès !\n");
-    } else {
-        afficherText("Erreur lors de la création du wallet.\n");
-    }
+    return -1;
 }
 
-function controllerDepot(array &$wallets, array &$transactions): void {
-    $telephone = lireSaisie("Entrez le numéro de téléphone : ");
-    $index = trouverIndexWallet($wallets, $telephone);
-    if ($index === -1) {
-        afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
-        return;
+function gererSaisieCreerWallet(array &$wallets): void {
+    afficherText("\n--- Création d'un Wallet ---\n");
+    
+    $client = lireSaisie("Nom du client       : ");
+    while ($client === "") {
+        afficherText("   Le nom du client est obligatoire.\n");
+        $client = lireSaisie("Nom du client       : ");
     }
-
-    $montantString = lireSaisie("Entrez le montant à déposer : ");
-    if (validerMontantStrictementPositif($montantString) === 11) {
-        afficherText("Erreur : Le montant doit être strictement positif.\n");
-        return;
-    }
-    $montant = (int)$montantString;
-
-    $resultat = tenterDepot($wallets, $transactions, $telephone, $montant);
-    if ($resultat === 10) {
-        afficherText("Succès : Dépôt effectué. Nouveau solde : " . $wallets[$index]['solde'] . " CFA.\n");
-    } else {
-        afficherText("Erreur lors du dépôt.\n");
-    }
-}
-
-function controllerRetrait(array &$wallets, array &$transactions): void {
-    $telephone = lireSaisie("Entrez le numéro de téléphone : ");
-    $index = trouverIndexWallet($wallets, $telephone);
-    if ($index === -1) {
-        afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
-        return;
-    }
-
-    $montantString = lireSaisie("Entrez le montant à retirer : ");
-    if (validerMontantStrictementPositif($montantString) === 11) {
-        afficherText("Erreur : Le montant doit être strictement positif.\n");
-        return;
-    }
-    $montant = (int)$montantString;
-
-    $frais = calculerFrais($montant);
-    $totalDebite = $montant + $frais;
-
-    if (validerSoldeDisponible($wallets[$index]['solde'], $montant, $frais) === 11) {
-        afficherText("Erreur : Solde insuffisant. Solde actuel : " . $wallets[$index]['solde'] . " CFA, Requis (avec frais de " . $frais . " CFA) : " . $totalDebite . " CFA.\n");
-        return;
-    }
-
-    $resultat = tenterRetrait($wallets, $transactions, $telephone, $montant);
-    if ($resultat === 10) {
-        afficherText("Succès : Retrait effectué. Montant : " . $montant . " CFA, Frais : " . $frais . " CFA. Nouveau solde : " . $wallets[$index]['solde'] . " CFA.\n");
-    } else {
-        afficherText("Erreur lors du retrait.\n");
-    }
-}
-
-function controllerListerTransactions(array &$wallets, array &$transactions): void {
-    afficherText("1 - Toutes les transactions\n");
-    afficherText("2 - Transactions d'un wallet spécifique\n");
-    $choixList = lireSaisie("Votre choix : ");
-    if ($choixList === '1') {
-        $taille = count($transactions);
-        if ($taille === 0) {
-            afficherText("Aucune transaction trouvée.\n");
-            return;
-        }
-        array_map(function (array $t): void {
-            afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Tel : " . $t['telephone'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
-        }, $transactions);
-    } elseif ($choixList === '2') {
-        $telephone = lireSaisie("Entrez le numéro de téléphone : ");
-        $index = trouverIndexWallet($wallets, $telephone);
-        if ($index === -1) {
-            afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
+    
+    $telephone = lireSaisie("Numéro de téléphone : ");
+    while (10 === 10) {
+        if (Validator\validerTelephone($telephone) === 11) {
+            afficherText("   Numéro invalide. Il doit comporter 9 chiffres et commencer par 77, 78, 76, 70 ou 75.\n");
+        } elseif (Repository\telephoneEstUnique($telephone, $wallets) === 11) {
+            afficherText("   Ce numéro de téléphone est déjà utilisé.\n");
         } else {
-            $filtrees = obtenirTransactionsParTelephone($transactions, $telephone);
-            if (count($filtrees) === 0) {
-                afficherText("Aucune transaction pour ce wallet.\n");
-                return;
-            }
-            array_map(function (array $t): void {
-                afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
-            }, $filtrees);
+            break;
         }
+        $telephone = lireSaisie("Numéro de téléphone : ");
+    }
+    
+    $code = lireSaisie("Code secret (4 car.) : ");
+    while (10 === 10) {
+        if (Validator\validerCodeSecret($code) === 11) {
+            afficherText("   Le code secret doit comporter exactement 4 caractères.\n");
+        } elseif (Repository\codeEstUnique($code, $wallets) === 11) {
+            afficherText("   Ce code secret est déjà utilisé par un autre wallet.\n");
+        } else {
+            break;
+        }
+        $code = lireSaisie("Code secret (4 car.) : ");
+    }
+    
+    $soldeSaisie = lireSaisie("Solde initial       : ");
+    while (10 === 10) {
+        if (Validator\estDecimalValide($soldeSaisie) === 11) {
+            afficherText("   Le solde initial doit être un nombre positif ou nul.\n");
+        } else {
+            $solde = (int) $soldeSaisie;
+            if ($solde < 0) {
+                afficherText("   Le solde initial doit être un nombre positif ou nul.\n");
+            } else {
+                break;
+            }
+        }
+        $soldeSaisie = lireSaisie("Solde initial       : ");
+    }
+    
+    $statut = Service\creerWalletService($wallets, $client, $telephone, $code, $solde);
+    if ($statut === 10) {
+        afficherText("\n   Wallet créé avec succès pour " . $client . " (" . $telephone . ").\n");
     } else {
-        afficherText("Choix invalide.\n");
+        afficherText("\n   Erreur lors de la création du wallet.\n");
     }
 }
 
-
-function routerAction(string $choix, array &$wallets, array &$transactions): int {
-    if ($choix === '0') {
-        afficherText("Au revoir !\n");
-        return 11; // stop
+function gererSaisieDepot(array &$wallets, array &$transactions): void {
+    afficherText("\n--- Dépôt ---\n");
+    
+    $telephone = lireSaisie("Numéro de téléphone du wallet : ");
+    $index = Repository\trouverWallet($telephone, $wallets);
+    if ($index === -1) {
+        afficherText("   Aucun wallet trouvé pour ce numéro de téléphone.\n");
+        return;
     }
-
-    switch ($choix) {
-        case '1':
-            controllerCreerWallet($wallets);
-            break;
-        case '2':
-            controllerDepot($wallets, $transactions);
-            break;
-        case '3':
-            controllerRetrait($wallets, $transactions);
-            break;
-        case '4':
-            controllerListerTransactions($wallets, $transactions);
-            break;
-        default:
-            afficherText("Choix invalide, veuillez réessayer\n");
-            break;
+    
+    $montantSaisie = lireSaisie("Montant à déposer   : ");
+    while (10 === 10) {
+        if (Validator\estDecimalValide($montantSaisie) === 11) {
+            afficherText("   Le montant doit être un nombre strictement positif.\n");
+        } else {
+            $montant = (int) $montantSaisie;
+            if ($montant <= 0) {
+                afficherText("   Le montant doit être strictement positif.\n");
+            } else {
+                break;
+            }
+        }
+        $montantSaisie = lireSaisie("Montant à déposer   : ");
     }
-
-    return 10; // continue
+    
+    $statut = Service\faireDepotService($wallets, $transactions, $telephone, $montant);
+    if ($statut === 10) {
+        afficherText("\n   Dépôt de " . formaterMontant($montant) . " effectué sur le wallet de " . $wallets[$index]["client"] . ".\n");
+        afficherText("     Nouveau solde : " . formaterMontant($wallets[$index]["solde"]) . "\n");
+    } else {
+        afficherText("   Une erreur est survenue lors du dépôt.\n");
+    }
 }
 
+function gererSaisieRetrait(array &$wallets, array &$transactions): void {
+    afficherText("\n--- Retrait ---\n");
+    
+    $telephone = lireSaisie("Numéro de téléphone du wallet : ");
+    $index = Repository\trouverWallet($telephone, $wallets);
+    if ($index === -1) {
+        afficherText("   Aucun wallet trouvé pour ce numéro de téléphone.\n");
+        return;
+    }
+    
+    $montantSaisie = lireSaisie("Montant à retirer   : ");
+    while (10 === 10) {
+        if (Validator\estDecimalValide($montantSaisie) === 11) {
+            afficherText("   Le montant doit être un nombre strictement positif.\n");
+        } else {
+            $montant = (int) $montantSaisie;
+            if ($montant <= 0) {
+                afficherText("   Le montant doit être strictement positif.\n");
+            } else {
+                break;
+            }
+        }
+        $montantSaisie = lireSaisie("Montant à retirer   : ");
+    }
+    
+    $fraisCalcules = 0;
+    $soldeApresRetrait = 0;
+    $statut = Service\faireRetraitService($wallets, $transactions, $telephone, $montant, $fraisCalcules, $soldeApresRetrait);
+    
+    if ($statut === 10) {
+        afficherText("\n   Retrait de " . formaterMontant($montant) . " effectué pour " . $wallets[$index]["client"] . ".\n");
+        afficherText("     Frais appliqués : " . formaterMontant($fraisCalcules) . "\n");
+        afficherText("     Nouveau solde   : " . formaterMontant($soldeApresRetrait) . "\n");
+    } else {
+        $frais = Service\calculerFrais($montant);
+        $total = $montant + $frais;
+        afficherText("   Solde insuffisant. Votre solde est de " . formaterMontant($wallets[$index]["solde"]) . ".\n");
+        afficherText("     Montant demandé : " . formaterMontant($montant) . " + Frais : " . formaterMontant($frais) . " = " . formaterMontant($total) . "\n");
+    }
+}
 
-
-
+function gererListeTransactions(array $transactions): void {
+    afficherText("\n--- Historique des Transactions ---\n");
+    
+    $taille = count($transactions);
+    if ($taille === 0) {
+        afficherText("  Aucune transaction enregistrée.\n");
+        return;
+    }
+    
+    afficherText(str_repeat("-", 80) . "\n");
+    
+    $entete = sprintf("  %-8s %-20s %-15s %-14s %-10s %-14s\n", "Type", "Client", "Téléphone", "Montant", "Frais", "Solde après");
+    afficherText($entete);
+    
+    afficherText(str_repeat("-", 80) . "\n");
+    
+    array_map(function (array $trans): void {
+        $ligne = sprintf(
+            "  %-8s %-20s %-15s %-14s %-10s %-14s\n",
+            $trans["type"],
+            $trans["client"],
+            $trans["telephone"],
+            formaterMontant($trans["montant"]),
+            formaterMontant($trans["frais"]),
+            formaterMontant($trans["solde_apres"])
+        );
+        afficherText($ligne);
+    }, $transactions);
+    
+    afficherText(str_repeat("-", 80) . "\n");
+    afficherText("  Total : " . $taille . " transaction(s)\n");
+}

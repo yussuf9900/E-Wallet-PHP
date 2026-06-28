@@ -1,50 +1,7 @@
 <?php
-// services.php - Contient la logique métier (Business Logic)
+namespace EWallet\Service;
 
-function tenterCreerWallet(array &$wallets, string $telephone, string $nom, int $solde, string $code): int {
-    if (validerTelephone($telephone) === 11) {
-        return 11;
-    }
-    if (estTelephoneUnique($wallets, $telephone) === 11) {
-        return 12;
-    }
-    if (validerNom($nom) === 11) {
-        return 13;
-    }
-    if ($solde < 0) {
-        return 14;
-    }
-    if (validerCodeSecret($code) === 11) {
-        return 15;
-    }
-    if (estCodeUnique($wallets, $code) === 11) {
-        return 16;
-    }
-
-    $nouveauWallet = [
-        'telephone' => $telephone,
-        'nom' => $nom,
-        'solde' => $solde,
-        'code' => $code
-    ];
-    ajouterWallet($wallets, $nouveauWallet);
-    return 10;
-}
-
-function tenterDepot(array &$wallets, array &$transactions, string $telephone, int $montant): int {
-    $index = trouverIndexWallet($wallets, $telephone);
-    if ($index === -1) {
-        return 11;
-    }
-    if ($montant <= 0) {
-        return 12;
-    }
-
-    $nouveauSolde = $wallets[$index]['solde'] + $montant;
-    mettreAjourSolde($wallets, $index, $nouveauSolde);
-    ajouterTransaction($transactions, 'depot', $telephone, $montant, 0);
-    return 10;
-}
+use EWallet\Repository;
 
 function calculerFrais(int $montant): int {
     if ($montant <= 10000) {
@@ -60,26 +17,65 @@ function calculerFrais(int $montant): int {
     return $frais;
 }
 
-function tenterRetrait(array &$wallets, array &$transactions, string $telephone, int $montant): int {
-    $index = trouverIndexWallet($wallets, $telephone);
+function creerWalletService(array &$wallets, string $client, string $telephone, string $code, int $solde): int {
+    $nouveau = [
+        "client" => $client,
+        "telephone" => $telephone,
+        "code" => $code,
+        "solde" => $solde
+    ];
+    return Repository\ajouterWallet($wallets, $nouveau);
+}
+
+function faireDepotService(array &$wallets, array &$transactions, string $telephone, int $montant): int {
+    $index = Repository\trouverWallet($telephone, $wallets);
     if ($index === -1) {
         return 11;
     }
     if ($montant <= 0) {
-        return 12;
+        return 11;
     }
-
-    $frais = calculerFrais($montant);
-    $totalDebite = $montant + $frais;
-
-    if (validerSoldeDisponible($wallets[$index]['solde'], $montant, $frais) === 11) {
-        return 13;
-    }
-
-    $nouveauSolde = $wallets[$index]['solde'] - $totalDebite;
-    mettreAjourSolde($wallets, $index, $nouveauSolde);
-    ajouterTransaction($transactions, 'retrait', $telephone, $montant, $frais);
+    $nouveauSolde = $wallets[$index]["solde"] + $montant;
+    Repository\mettreAJourSolde($wallets, $index, $nouveauSolde);
+    $trans = [
+        "type" => "Dépôt",
+        "telephone" => $telephone,
+        "client" => $wallets[$index]["client"],
+        "montant" => $montant,
+        "frais" => 0,
+        "solde_apres" => $nouveauSolde,
+        "date" => date('Y-m-d H:i:s')
+    ];
+    Repository\ajouterTransaction($transactions, $trans);
     return 10;
 }
 
-
+function faireRetraitService(array &$wallets, array &$transactions, string $telephone, int $montant, int &$fraisCalcules, int &$soldeApresRetrait): int {
+    $index = Repository\trouverWallet($telephone, $wallets);
+    if ($index === -1) {
+        return 11;
+    }
+    if ($montant <= 0) {
+        return 11;
+    }
+    $frais = calculerFrais($montant);
+    $total = $montant + $frais;
+    if ($total > $wallets[$index]["solde"]) {
+        return 11;
+    }
+    $nouveauSolde = $wallets[$index]["solde"] - $total;
+    Repository\mettreAJourSolde($wallets, $index, $nouveauSolde);
+    $fraisCalcules = $frais;
+    $soldeApresRetrait = $nouveauSolde;
+    $trans = [
+        "type" => "Retrait",
+        "telephone" => $telephone,
+        "client" => $wallets[$index]["client"],
+        "montant" => $montant,
+        "frais" => $frais,
+        "solde_apres" => $nouveauSolde,
+        "date" => date('Y-m-d H:i:s')
+    ];
+    Repository\ajouterTransaction($transactions, $trans);
+    return 10;
+}
