@@ -61,6 +61,29 @@ function controllerCreerWallet(array &$wallets): void {
     }
 }
 
+function controllerDepot(array &$wallets, array &$transactions): void {
+    $telephone = lireSaisie("Entrez le numéro de téléphone : ");
+    $index = trouverIndexWallet($wallets, $telephone);
+    if ($index === -1) {
+        afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
+        return;
+    }
+
+    $montantString = lireSaisie("Entrez le montant à déposer : ");
+    if (validerMontantStrictementPositif($montantString) === 11) {
+        afficherText("Erreur : Le montant doit être strictement positif.\n");
+        return;
+    }
+    $montant = (int)$montantString;
+
+    $resultat = tenterDepot($wallets, $transactions, $telephone, $montant);
+    if ($resultat === 10) {
+        afficherText("Succès : Dépôt effectué. Nouveau solde : " . $wallets[$index]['solde'] . " CFA.\n");
+    } else {
+        afficherText("Erreur lors du dépôt.\n");
+    }
+}
+
 function routerAction(string $choix, array &$wallets, array &$transactions): int {
     if ($choix === '0') {
         afficherText("Au revoir !\n");
@@ -72,7 +95,7 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
             controllerCreerWallet($wallets);
             break;
         case '2':
-            afficherText("Option 2 choisie (Faire Dépôt)\n");
+            controllerDepot($wallets, $transactions);
             break;
         case '3':
             afficherText("Option 3 choisie (Faire Retrait)\n");
@@ -87,4 +110,5 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
 
     return 10; // continue
 }
+
 

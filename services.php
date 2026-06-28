@@ -30,3 +30,19 @@ function tenterCreerWallet(array &$wallets, string $telephone, string $nom, int 
     ajouterWallet($wallets, $nouveauWallet);
     return 10;
 }
+
+function tenterDepot(array &$wallets, array &$transactions, string $telephone, int $montant): int {
+    $index = trouverIndexWallet($wallets, $telephone);
+    if ($index === -1) {
+        return 11;
+    }
+    if ($montant <= 0) {
+        return 12;
+    }
+
+    $nouveauSolde = $wallets[$index]['solde'] + $montant;
+    mettreAjourSolde($wallets, $index, $nouveauSolde);
+    ajouterTransaction($transactions, 'depot', $telephone, $montant, 0);
+    return 10;
+}
+
