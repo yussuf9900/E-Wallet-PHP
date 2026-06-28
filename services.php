@@ -46,3 +46,40 @@ function tenterDepot(array &$wallets, array &$transactions, string $telephone, i
     return 10;
 }
 
+function calculerFrais(int $montant): int {
+    if ($montant <= 10000) {
+        return 200;
+    }
+    if ($montant <= 100000) {
+        return 500;
+    }
+    $frais = (int)($montant * 0.01);
+    if ($frais > 5000) {
+        return 5000;
+    }
+    return $frais;
+}
+
+function tenterRetrait(array &$wallets, array &$transactions, string $telephone, int $montant): int {
+    $index = trouverIndexWallet($wallets, $telephone);
+    if ($index === -1) {
+        return 11;
+    }
+    if ($montant <= 0) {
+        return 12;
+    }
+
+    $frais = calculerFrais($montant);
+    $totalDebite = $montant + $frais;
+
+    if (validerSoldeDisponible($wallets[$index]['solde'], $montant, $frais) === 11) {
+        return 13;
+    }
+
+    $nouveauSolde = $wallets[$index]['solde'] - $totalDebite;
+    mettreAjourSolde($wallets, $index, $nouveauSolde);
+    ajouterTransaction($transactions, 'retrait', $telephone, $montant, $frais);
+    return 10;
+}
+
+
