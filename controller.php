@@ -115,6 +115,40 @@ function controllerRetrait(array &$wallets, array &$transactions): void {
     }
 }
 
+function controllerListerTransactions(array &$wallets, array &$transactions): void {
+    afficherText("1 - Toutes les transactions\n");
+    afficherText("2 - Transactions d'un wallet spécifique\n");
+    $choixList = lireSaisie("Votre choix : ");
+    if ($choixList === '1') {
+        $compteur = 0;
+        foreach ($transactions as $t) {
+            afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Tel : " . $t['telephone'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
+            $compteur = $compteur + 1;
+        }
+        if ($compteur === 0) {
+            afficherText("Aucune transaction trouvée.\n");
+        }
+    } elseif ($choixList === '2') {
+        $telephone = lireSaisie("Entrez le numéro de téléphone : ");
+        $index = trouverIndexWallet($wallets, $telephone);
+        if ($index === -1) {
+            afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
+        } else {
+            $filtrees = obtenirTransactionsParTelephone($transactions, $telephone);
+            $compteur = 0;
+            foreach ($filtrees as $t) {
+                afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
+                $compteur = $compteur + 1;
+            }
+            if ($compteur === 0) {
+                afficherText("Aucune transaction pour ce wallet.\n");
+            }
+        }
+    } else {
+        afficherText("Choix invalide.\n");
+    }
+}
+
 function routerAction(string $choix, array &$wallets, array &$transactions): int {
     if ($choix === '0') {
         afficherText("Au revoir !\n");
@@ -132,7 +166,7 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
             controllerRetrait($wallets, $transactions);
             break;
         case '4':
-            afficherText("Option 4 choisie (Lister les Transactions)\n");
+            controllerListerTransactions($wallets, $transactions);
             break;
         default:
             afficherText("Choix invalide, veuillez réessayer\n");
@@ -141,6 +175,7 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
 
     return 10; // continue
 }
+
 
 
 
