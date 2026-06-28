@@ -1,5 +1,5 @@
 <?php
-// validator.php - Regroupe toutes les fonctions de validation
+namespace EWallet\Validator;
 
 function estChiffre(string $chaine): int {
     if ($chaine === "") {
@@ -57,48 +57,3 @@ function validerCodeSecret(string $code): int {
 function validerNom(string $nom): int {
     return $nom !== "" ? 10 : 11;
 }
-
-function validerMontant(string $montant): int {
-    if (estChiffre($montant) === 11) {
-        return 11;
-    }
-    $valeur = (int)$montant;
-    if ($valeur < 0) {
-        return 11;
-    }
-    return 10;
-}
-
-function validerMontantStrictementPositif(string $montant): int {
-    if (estChiffre($montant) === 11) {
-        return 11;
-    }
-    $valeur = (int)$montant;
-    if ($valeur <= 0) {
-        return 11;
-    }
-    return 10;
-}
-
-
-function validerSoldeDisponible(int $soldeActuel, int $montant, int $frais): int {
-    if ($soldeActuel < ($montant + $frais)) {
-        return 11;
-    }
-    return 10;
-}
-
-function estTelephoneUnique(array &$wallets, string $telephone): int {
-    $found = array_filter($wallets, function(array $w) use ($telephone): bool {
-        return $w['telephone'] === $telephone;
-    });
-    return count($found) === 0 ? 10 : 11;
-}
-
-function estCodeUnique(array &$wallets, string $code): int {
-    $found = array_filter($wallets, function(array $w) use ($code): bool {
-        return $w['code'] === $code;
-    });
-    return count($found) === 0 ? 10 : 11;
-}
-
