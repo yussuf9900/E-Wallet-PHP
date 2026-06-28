@@ -30,3 +30,14 @@ function ajouterTransaction(array &$transactions, string $type, string $telephon
     ];
 }
 
+function obtenirTransactionsParTelephone(array &$transactions, string $telephone): array {
+    $filtrees = [];
+    foreach ($transactions as $t) {
+        if ($t['telephone'] === $telephone) {
+            $filtrees[] = $t;
+        }
+    }
+    return $filtrees;
+}
+
+
