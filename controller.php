@@ -19,6 +19,48 @@ function afficherMenu(): void {
     afficherText("0 - Quitter\n");
 }
 
+function controllerCreerWallet(array &$wallets): void {
+    $telephone = lireSaisie("Entrez le numéro de téléphone (Sénégal, 9 chiffres) : ");
+    if (validerTelephone($telephone) === 11) {
+        afficherText("Erreur : Numéro de téléphone invalide.\n");
+        return;
+    }
+    if (estTelephoneUnique($wallets, $telephone) === 11) {
+        afficherText("Erreur : Ce numéro de téléphone existe déjà.\n");
+        return;
+    }
+
+    $nom = lireSaisie("Entrez le nom du client : ");
+    if (validerNom($nom) === 11) {
+        afficherText("Erreur : Le nom est obligatoire.\n");
+        return;
+    }
+
+    $soldeString = lireSaisie("Entrez le solde initial (>= 0) : ");
+    if (validerMontant($soldeString) === 11) {
+        afficherText("Erreur : Solde initial invalide (doit être un entier positif ou nul).\n");
+        return;
+    }
+    $solde = (int)$soldeString;
+
+    $code = lireSaisie("Entrez le code secret (4 chiffres) : ");
+    if (validerCodeSecret($code) === 11) {
+        afficherText("Erreur : Le code secret doit comporter exactement 4 chiffres.\n");
+        return;
+    }
+    if (estCodeUnique($wallets, $code) === 11) {
+        afficherText("Erreur : Ce code secret existe déjà.\n");
+        return;
+    }
+
+    $resultat = tenterCreerWallet($wallets, $telephone, $nom, $solde, $code);
+    if ($resultat === 10) {
+        afficherText("Succès : Le wallet a été créé avec succès !\n");
+    } else {
+        afficherText("Erreur lors de la création du wallet.\n");
+    }
+}
+
 function routerAction(string $choix, array &$wallets, array &$transactions): int {
     if ($choix === '0') {
         afficherText("Au revoir !\n");
@@ -27,7 +69,7 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
 
     switch ($choix) {
         case '1':
-            afficherText("Option 1 choisie (Créer Wallet)\n");
+            controllerCreerWallet($wallets);
             break;
         case '2':
             afficherText("Option 2 choisie (Faire Dépôt)\n");
@@ -45,3 +87,4 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
 
     return 10; // continue
 }
+
