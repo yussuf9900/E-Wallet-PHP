@@ -2,14 +2,14 @@
 // repository.php - Dédié à la persistance et l'accès aux données en mémoire
 
 function trouverIndexWallet(array &$wallets, string $telephone): int {
-    $index = 0;
-    foreach ($wallets as $wallet) {
-        if ($wallet['telephone'] === $telephone) {
-            return $index;
-        }
-        $index = $index + 1;
+    $found = array_filter($wallets, function(array $w) use ($telephone): bool {
+        return $w["telephone"] === $telephone;
+    });
+    if (count($found) === 0) {
+        return -1;
     }
-    return -1;
+    $keys = array_keys($found);
+    return $keys[0];
 }
 
 function ajouterWallet(array &$wallets, array $wallet): void {
@@ -31,13 +31,7 @@ function ajouterTransaction(array &$transactions, string $type, string $telephon
 }
 
 function obtenirTransactionsParTelephone(array &$transactions, string $telephone): array {
-    $filtrees = [];
-    foreach ($transactions as $t) {
-        if ($t['telephone'] === $telephone) {
-            $filtrees[] = $t;
-        }
-    }
-    return $filtrees;
+    return array_filter($transactions, function(array $t) use ($telephone): bool {
+        return $t['telephone'] === $telephone;
+    });
 }
-
-

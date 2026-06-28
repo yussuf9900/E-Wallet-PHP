@@ -120,14 +120,14 @@ function controllerListerTransactions(array &$wallets, array &$transactions): vo
     afficherText("2 - Transactions d'un wallet spécifique\n");
     $choixList = lireSaisie("Votre choix : ");
     if ($choixList === '1') {
-        $compteur = 0;
-        foreach ($transactions as $t) {
-            afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Tel : " . $t['telephone'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
-            $compteur = $compteur + 1;
-        }
-        if ($compteur === 0) {
+        $taille = count($transactions);
+        if ($taille === 0) {
             afficherText("Aucune transaction trouvée.\n");
+            return;
         }
+        array_map(function (array $t): void {
+            afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Tel : " . $t['telephone'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
+        }, $transactions);
     } elseif ($choixList === '2') {
         $telephone = lireSaisie("Entrez le numéro de téléphone : ");
         $index = trouverIndexWallet($wallets, $telephone);
@@ -135,19 +135,19 @@ function controllerListerTransactions(array &$wallets, array &$transactions): vo
             afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
         } else {
             $filtrees = obtenirTransactionsParTelephone($transactions, $telephone);
-            $compteur = 0;
-            foreach ($filtrees as $t) {
-                afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
-                $compteur = $compteur + 1;
-            }
-            if ($compteur === 0) {
+            if (count($filtrees) === 0) {
                 afficherText("Aucune transaction pour ce wallet.\n");
+                return;
             }
+            array_map(function (array $t): void {
+                afficherText("[" . $t['date'] . "] Type : " . $t['type'] . " | Montant : " . $t['montant'] . " CFA | Frais : " . $t['frais'] . " CFA\n");
+            }, $filtrees);
         }
     } else {
         afficherText("Choix invalide.\n");
     }
 }
+
 
 function routerAction(string $choix, array &$wallets, array &$transactions): int {
     if ($choix === '0') {
