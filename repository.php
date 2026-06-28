@@ -15,3 +15,18 @@ function trouverIndexWallet(array &$wallets, string $telephone): int {
 function ajouterWallet(array &$wallets, array $wallet): void {
     $wallets[] = $wallet;
 }
+
+function mettreAjourSolde(array &$wallets, int $index, int $nouveauSolde): void {
+    $wallets[$index]['solde'] = $nouveauSolde;
+}
+
+function ajouterTransaction(array &$transactions, string $type, string $telephone, int $montant, int $frais): void {
+    $transactions[] = [
+        'type' => $type,
+        'telephone' => $telephone,
+        'montant' => $montant,
+        'frais' => $frais,
+        'date' => date('Y-m-d H:i:s')
+    ];
+}
+
