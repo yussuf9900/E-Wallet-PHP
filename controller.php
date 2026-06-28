@@ -84,6 +84,37 @@ function controllerDepot(array &$wallets, array &$transactions): void {
     }
 }
 
+function controllerRetrait(array &$wallets, array &$transactions): void {
+    $telephone = lireSaisie("Entrez le numéro de téléphone : ");
+    $index = trouverIndexWallet($wallets, $telephone);
+    if ($index === -1) {
+        afficherText("Erreur : Aucun wallet trouvé pour ce numéro.\n");
+        return;
+    }
+
+    $montantString = lireSaisie("Entrez le montant à retirer : ");
+    if (validerMontantStrictementPositif($montantString) === 11) {
+        afficherText("Erreur : Le montant doit être strictement positif.\n");
+        return;
+    }
+    $montant = (int)$montantString;
+
+    $frais = calculerFrais($montant);
+    $totalDebite = $montant + $frais;
+
+    if (validerSoldeDisponible($wallets[$index]['solde'], $montant, $frais) === 11) {
+        afficherText("Erreur : Solde insuffisant. Solde actuel : " . $wallets[$index]['solde'] . " CFA, Requis (avec frais de " . $frais . " CFA) : " . $totalDebite . " CFA.\n");
+        return;
+    }
+
+    $resultat = tenterRetrait($wallets, $transactions, $telephone, $montant);
+    if ($resultat === 10) {
+        afficherText("Succès : Retrait effectué. Montant : " . $montant . " CFA, Frais : " . $frais . " CFA. Nouveau solde : " . $wallets[$index]['solde'] . " CFA.\n");
+    } else {
+        afficherText("Erreur lors du retrait.\n");
+    }
+}
+
 function routerAction(string $choix, array &$wallets, array &$transactions): int {
     if ($choix === '0') {
         afficherText("Au revoir !\n");
@@ -98,7 +129,7 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
             controllerDepot($wallets, $transactions);
             break;
         case '3':
-            afficherText("Option 3 choisie (Faire Retrait)\n");
+            controllerRetrait($wallets, $transactions);
             break;
         case '4':
             afficherText("Option 4 choisie (Lister les Transactions)\n");
@@ -110,5 +141,6 @@ function routerAction(string $choix, array &$wallets, array &$transactions): int
 
     return 10; // continue
 }
+
 
 

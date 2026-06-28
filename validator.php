@@ -85,3 +85,11 @@ function estCodeUnique(array &$wallets, string $code): int {
     }
     return 10; // Unique
 }
+
+function validerSoldeDisponible(int $soldeActuel, int $montant, int $frais): int {
+    if ($soldeActuel < ($montant + $frais)) {
+        return 11;
+    }
+    return 10;
+}
+
